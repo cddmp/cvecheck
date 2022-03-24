@@ -65,41 +65,50 @@ class Ansi:
 
 class ColoredEntry():
     def __init__(self, entry):
-        self.v2_only = False
-        
         self.entry = entry
-        self.id = self.color_id(entry.id)
+        self.id = self._color_id(entry.id)
         self.url = self.entry.url
-        
+
+        self.v2score = None
+        self.v3score = None
+        if hasattr(entry, 'v2score'):
+            self.v2score =  self._color_score(entry.v2score, False)
+        if hasattr(entry, 'v3score'):
+            self.v3score =  self._color_score(entry.v3score)
+
+        self.v2severity = None
+        self.v3severity = None
+        if hasattr(entry, 'v2severity'):
+            self.v2severity =  self._color_severity(entry.v2severity.capitalize())
+        if hasattr(entry, 'v3severity'):
+            self.v3severity =  self._color_severity(entry.v3severity.capitalize())
+
         self.v2vector = None
         self.v3vector = None
         if hasattr(entry, 'v2vector'):
             self.v2vector =  f"CVSS:2.0/{entry.v2vector}"
         if hasattr(entry, 'v3vector'):
             self.v3vector =  entry.v3vector
-        else:
-            self.v2_only = True
-        
-        self.v2score = None
-        self.v3score = None
-        if hasattr(entry, 'v2score'):
-            self.v2score =  self.color_score(entry.v2score, False)
-        if hasattr(entry, 'v3score'):
-            self.v3score =  self.color_score(entry.v3score)
-
-        self.v2severity = None
-        self.v3severity = None
-        if hasattr(entry, 'v2severity'):
-            self.v2severity =  self.color_severity(entry.v2severity.capitalize())
-        if hasattr(entry, 'v3severity'):
-            self.v3severity =  self.color_severity(entry.v3severity.capitalize())
 
         self.description = entry.cve.description.description_data[0].value
 
-    def color_id(self, cve_id):
+    def __repr__(self):
+        result = f"\n{self.id}\n\n"
+        if self.v3score:
+            result += f"CVSS v3 Base Score: {self.v3score} ({self.v3severity}) ({self.v3vector})\n"
+        if self.v2score:
+            result += f"CVSS v2 Base Score: {self.v2score} ({self.v2severity}) ({self.v2vector})\n\n"
+        if not self.v3score and not self.v2score:
+            result += f"CVSS v3 Base Score: unassigned\n"
+            result += f"CVSS v2 Base Score: unassigned\n\n"
+        result += f"{self.url}\n\n"
+        result += f"{self.description}\n"
+        return result
+
+    def _color_id(self, cve_id):
         return Ansi.underline(Ansi.bold(cve_id))
     
-    def color_severity(self, severity):
+    def _color_severity(self, severity):
         mapping = {
                 "Low": Ansi.green,
                 "Medium": Ansi.yellow,
@@ -108,7 +117,7 @@ class ColoredEntry():
             }
         return mapping[severity](severity)
 
-    def color_score(self, score, cvss3=True):
+    def _color_score(self, score, cvss3=True):
         if score == 0.0:
             return str(score)
         if 0.1 <= score <= 3.9:
@@ -122,15 +131,6 @@ class ColoredEntry():
             return Ansi.red(str(score))
         if 9.0 <= score <= 10.0:
             return Ansi.very_red(str(score))
-
-    def __repr__(self):
-        result = f"\n{self.id}\n\n"
-        if not self.v2_only:
-            result += f"CVSS v3 Base Score: {self.v3score} ({self.v3severity}) ({self.v3vector})\n"
-        result += f"CVSS v2 Base Score: {self.v2score} ({self.v2severity}) ({self.v2vector})\n\n"
-        result += f"{self.url}\n\n"
-        result += f"{self.description}\n"
-        return result
 
 def print_banner():
     print(Ansi.bold(Ansi.green('-= CVECHECK =-')), end='\n\n')
@@ -150,34 +150,46 @@ def check_arguments():
 
     return args
 
-if "NO_COLOR" in os.environ:
-    GLOBAL_COLORS = False
+def main():
+    global GLOBAL_COLORS
+    if "NO_COLOR" in os.environ:
+        GLOBAL_COLORS = False
 
-print_banner()
-args = check_arguments()
-entries_v2 = []
-entries_v3 = []
+    print_banner()
+    args = check_arguments()
+    entries_v2 = []
+    entries_v3 = []
+    entries_unrated = []
 
-if args.keyword:
-    print_info(f'Searching by keyword...')
-    cves = nvdlib.searchCVE(keyword=args.keyword,key=args.api_key)
-elif args.cpe:
-    print_info(f'Searching by CPE...')
-    cves = nvdlib.searchCVE(cpeMatchString=args.cpe,key=args.api_key)
+    if args.keyword:
+        print_info(f'Searching by keyword...')
+        cves = nvdlib.searchCVE(keyword=args.keyword,key=args.api_key)
+    elif args.cpe:
+        print_info(f'Searching by CPE...')
+        cves = nvdlib.searchCVE(cpeMatchString=args.cpe,key=args.api_key)
 
-for entry in cves:
-    if not hasattr(entry, 'v3score'):
-        entries_v2.append(ColoredEntry(entry))
-    else:
-        entries_v3.append(ColoredEntry(entry))
+    for entry in cves:
+        colored_entry = ColoredEntry(entry)
+        if not colored_entry.v3score and not colored_entry.v2score:
+            entries_unrated.append(colored_entry)
+        elif not colored_entry.v3score:
+            entries_v2.append(colored_entry)
+        else:
+            entries_v3.append(colored_entry)
 
-# Sort entries by score in reverse order
-entries_v2 = sorted(entries_v2, key=lambda x: x.entry.v2score, reverse=True)
-entries_v3 = sorted(entries_v3, key=lambda x: x.entry.v3score, reverse=True)
+    # Sort entries by score in reverse order
+    entries_v2 = sorted(entries_v2, key=lambda x: x.entry.v2score, reverse=True)
+    entries_v3 = sorted(entries_v3, key=lambda x: x.entry.v3score, reverse=True)
 
-print(Ansi.bold('[*] Found ') + Ansi.red(str(len(entries_v3))) + Ansi.bold(' CVE(s) with CVSS v3 and CVSS v2 score'))
-for entry in entries_v3:
-    print(entry) 
-print(Ansi.bold('[*] Found ') + Ansi.red(str(len(entries_v2))) + Ansi.bold(' CVE(s) with CVSS v2 score only'))
-for entry in entries_v2:
-    print(entry) 
+    print(Ansi.bold('[*] Found ') + Ansi.red(str(len(entries_unrated))) + Ansi.bold(' CVE(s) in analysis state (no CVSS assigned yet)'))
+    for entry in entries_unrated:
+        print(entry)
+    print(Ansi.bold('[*] Found ') + Ansi.red(str(len(entries_v3))) + Ansi.bold(' CVE(s) with CVSS v3 and CVSS v2 score'))
+    for entry in entries_v3:
+        print(entry)
+    print(Ansi.bold('[*] Found ') + Ansi.red(str(len(entries_v2))) + Ansi.bold(' CVE(s) with CVSS v2 score only'))
+    for entry in entries_v2:
+        print(entry)
+
+if __name__ == "__main__":
+    main()
