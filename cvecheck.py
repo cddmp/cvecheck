@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 #
 # A simple tool to query the National Vulnerability Database (NVD) with colors support.
 #
