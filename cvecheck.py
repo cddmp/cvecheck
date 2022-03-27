@@ -7,6 +7,7 @@
 from argparse import ArgumentParser
 import nvdlib
 import os
+import re
 
 COLORS = True
 CVSSV2 = "v2"
@@ -271,6 +272,7 @@ def parse_arguments():
     parser_severity = parser.add_mutually_exclusive_group()
     parser_severity.add_argument('--filter-v2severity', dest='v2severity', help=f'filter by CVSS v2 severity (e.g.,"{Ansi.bold("medium,high")}" or only "{Ansi.bold("high")}")')
     parser_severity.add_argument('--filter-v3severity', dest='v3severity', help=f'filter by CVSS v3 severity (e.g.,"{Ansi.bold("medium,high")}" or only "{Ansi.bold("high")}")')
+    parser_severity.add_argument('--filter-cweid', dest='cwe_id', help=f'filter by CWE ID (e.g., "{Ansi.bold("CWE-125")}")')
     parser.add_argument('--api-key', dest='api_key', default='', help=f'API key for National Vulnerabilities Database (NVD) for faster queries (optional)')
     args = parser.parse_args()
 
@@ -284,6 +286,9 @@ def parse_arguments():
 
     if args.cpe and args.exact_match:
         parser.error('--exact-match requires keyword search')
+
+    if args.cwe_id and not re.search(r'^cwe-[0-9]*$', args.cwe_id, re.IGNORECASE):
+        parser.error('invalid CWE ID')
 
     try:
         args.severity_filter = None
@@ -329,6 +334,7 @@ def main():
                                 cvssV3Metrics=args.v3metrics,
                                 cvssV2Severity=cvssV2Severity,
                                 cvssV3Severity=cvssV3Severity,
+                                cweId=args.cwe_id,
                                 exactMatch=args.exact_match,
                                 limit=args.limit,
                                 key=args.api_key)
@@ -339,6 +345,7 @@ def main():
                                 cvssV3Metrics=args.v3metrics,
                                 cvssV2Severity=cvssV2Severity,
                                 cvssV3Severity=cvssV3Severity,
+                                cweId=args.cwe_id,
                                 exactMatch=args.exact_match,
                                 limit=args.limit,
                                 key=args.api_key)
