@@ -256,6 +256,7 @@ def parse_arguments():
     mode_switch = parser.add_mutually_exclusive_group()
     mode_switch.add_argument('--cpe', action="store_true", help=f'enforce CPE search')
     mode_switch.add_argument('--keyword', action="store_true", help=f'enforce keyword search')
+    parser.add_argument('--exact-match', dest='exact_match', action='store_true', help=f'return only results which literally match the keyword')
 
     parser.add_argument('--limit', dest='limit', type=int, help=f'limit the number of results at API level')
 
@@ -280,6 +281,9 @@ def parse_arguments():
         else:
             args.cpe = False
             args.keyword = True
+
+    if args.cpe and args.exact_match:
+        parser.error('--exact-match requires keyword search')
 
     try:
         args.severity_filter = None
@@ -325,6 +329,7 @@ def main():
                                 cvssV3Metrics=args.v3metrics,
                                 cvssV2Severity=cvssV2Severity,
                                 cvssV3Severity=cvssV3Severity,
+                                exactMatch=args.exact_match,
                                 limit=args.limit,
                                 key=args.api_key)
     elif args.cpe:
@@ -334,6 +339,7 @@ def main():
                                 cvssV3Metrics=args.v3metrics,
                                 cvssV2Severity=cvssV2Severity,
                                 cvssV3Severity=cvssV3Severity,
+                                exactMatch=args.exact_match,
                                 limit=args.limit,
                                 key=args.api_key)
 
