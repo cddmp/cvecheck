@@ -368,13 +368,19 @@ def main():
     entries_v2 = sorted(entries_v2, key=lambda x: x.entry.v2score, reverse=True)
     entries_v3 = sorted(entries_v3, key=lambda x: x.entry.v3score, reverse=True)
 
-    print(Ansi.bold('[*] Found ') + Ansi.red(str(len(entries_unrated))) + Ansi.bold(' CVE(s) in analysis state (no CVSS assigned yet)'))
+    total_unrated = len(entries_unrated)
+    total_v2 = len(entries_v2)
+    total_v3 = len(entries_v3)
+    total_all = total_unrated + total_v2 + total_v3
+
+    print(Ansi.bold('[*] Found ') + Ansi.red(str(total_all)) + Ansi.bold(' CVE(s)'))
+    print(Ansi.bold('[*] ') + Ansi.red(str(total_unrated)) + '/' + Ansi.red(str(total_all)) + Ansi.bold(' CVE(s) in analysis state (no CVSS assigned yet)'))
     for entry in entries_unrated:
         print(entry)
-    print(Ansi.bold('[*] Found ') + Ansi.red(str(len(entries_v3))) + Ansi.bold(' CVE(s) with CVSS v3 and CVSS v2 score'))
+    print(Ansi.bold('[*] ') + Ansi.red(str(total_v3)) + '/' + Ansi.red(str(total_all)) + Ansi.bold(' CVE(s) with CVSS v3 and CVSS v2 score'))
     for entry in entries_v3:
         print(entry)
-    print(Ansi.bold('[*] Found ') + Ansi.red(str(len(entries_v2))) + Ansi.bold(' CVE(s) with CVSS v2 score only'))
+    print(Ansi.bold('[*] ') + Ansi.red(str(total_v2)) + '/' + Ansi.red(str(total_all)) + Ansi.bold(' CVE(s) with CVSS v2 score only'))
     for entry in entries_v2:
         print(entry)
 
