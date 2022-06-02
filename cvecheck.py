@@ -169,7 +169,7 @@ class CvssSeverityFilter():
 
         for severity in severities:
             severity = severity.lower()
-            if severity in ['low', 'medium', 'high'] or (self.version == 'v3' and severity == 'criticial'):
+            if severity in ['low', 'medium', 'high'] or (self.version == 'v3' and severity == 'critical'):
                 self.severities = severities
                 continue
             else:
