@@ -41,10 +41,10 @@ class ColoredEntry():
             self.v2score =  self._color_score(entry.v2score, False)
         if hasattr(entry, 'v30score'):
             self.v30score = self._color_score(entry.v30score)
-            self.entry.v3score = self.v30score
+            self.entry.v3score = self.entry.v30score
         elif hasattr(entry, 'v31score'):
             self.v31score =  self._color_score(entry.v31score)
-            self.entry.v3score = self.v31score
+            self.entry.v3score = self.entry.v31score
 
         self.v2severity = None
         self.v3severity = None
@@ -350,7 +350,6 @@ def main():
                                 key=args.api_key)
 
     for entry in cves:
-
         if args.severity_filter and not args.severity_filter.match(entry):
             continue
         if args.score_filter and not args.score_filter.match(entry):
