@@ -10,7 +10,7 @@
 
 Often during penetration tests, outdated software components are found and it is necessary to look up whether any Common Vulnerabilities and Exposures (CVE) exists. This simple tool is meant to make this process faster. It allows to query the National Vulnerability Database (NVD) by keyword or by Common Platform Enumeration (CPE) string. The tool detects the correct mode automatically. Currently it outputs CVEs in three groups:
 - CVEs which are still under analysis (no CVSS vector assigned)
-- CVEs with both a CVSS v3 and a CVSS v2 vector
+- CVEs with both a CVSS v3.1/v3.0 and a CVSS v2 vector
 - CVEs with a CVSS v2 vector only
 
 By default, the last two groups are sorted by score in descending order.
@@ -20,8 +20,13 @@ By default, the last two groups are sorted by score in descending order.
 
 ## Run
 
+### CVE search
+The tool automatically searches for a specific CVE if the keyword starts with 'CVE-' (case agnostic).
+
+```./cvecheck.py 'CVE-2014-0160'```
+
 ### CPE based search
-The tool automatically does a CPE based search if the keyword starts with 'CPE:'. A CPE strings has the following format:
+The tool automatically does a CPE based search if the keyword starts with 'cpe:' (case agnostic). A CPE strings has the following format:
 
 ``cpe:<cpe_version>:<part>:<vendor>:<product>:<version>:<update>:<edition>:<language>:<sw_edition>:<target_sw>:<target_hw>:<other>``
 
@@ -39,7 +44,7 @@ If the keyword does not start with 'CPE:', the keyword based search will be used
 
 ```./cvecheck.py 'openssl 1.0.2f'```
 
-Both, CPE and keyword based search can also be enforced by either passing ``--cpe`` or ``--keyword``.
+CVE, CPE and keyword based search can also be enforced by either passing ``--cve``, ``--cpe`` or ``--keyword``.
 
 ## Filter
 Various filters are supported. Results can be filtered by metrics, vector or score. 

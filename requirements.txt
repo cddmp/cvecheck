@@ -1,2 +1,2 @@
-nvdlib==0.6.1
+nvdlib
 

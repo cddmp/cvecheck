@@ -233,7 +233,7 @@ def print_info(msg):
 
 def parse_arguments():
     parser = ArgumentParser(description="""A simple tool to query the National Vulnerability Database (NVD) with colors support.""")
-    parser.add_argument('search', help=f'search by keyword (e.g.,"{Ansi.bold("OpenSSL 1.0.2f")}") or CPE (e.g.,"{Ansi.bold("cpe:2.3:a:openssl:openssl:1.0.2f:*:*:*:*:*:*:*")}")')
+    parser.add_argument('search', help=f'search by keyword (e.g.,"{Ansi.bold("OpenSSL 1.0.2f")}"), CVE (e.g.,"{Ansi.bold("CVE-2014-0160")}") or CPE (e.g.,"{Ansi.bold("cpe:2.3:a:openssl:openssl:1.0.2f:*:*:*:*:*:*:*")}")')
 
     mode_switch = parser.add_mutually_exclusive_group()
     mode_switch.add_argument('--cve', action="store_true", help=f'enforce CVE search')
@@ -263,6 +263,9 @@ def parse_arguments():
             args.cpe = True
             args.cve = False
             args.keyword = False
+
+            # NVD API does not like upper case 'CPE:...'
+            args.search = args.search.lower()
         elif args.search.lower().startswith('cve-'):
             args.cpe = False
             args.cve = True
