@@ -72,36 +72,48 @@ class ColoredEntry():
         self.url = self.entry.url
 
         self.v2score = None
-        self.v3score = None
+        self.v30score = None
+        self.v31score = None
         if hasattr(entry, 'v2score'):
             self.v2score =  self._color_score(entry.v2score, False)
-        if hasattr(entry, 'v3score'):
-            self.v3score =  self._color_score(entry.v3score)
+        if hasattr(entry, 'v30score'):
+            self.v30score = self._color_score(entry.v30score)
+            self.entry.v3score = self.v30score
+        elif hasattr(entry, 'v31score'):
+            self.v31score =  self._color_score(entry.v31score)
+            self.entry.v3score = self.v31score
 
         self.v2severity = None
         self.v3severity = None
         if hasattr(entry, 'v2severity'):
             self.v2severity =  self._color_severity(entry.v2severity.capitalize())
-        if hasattr(entry, 'v3severity'):
-            self.v3severity =  self._color_severity(entry.v3severity.capitalize())
+        if hasattr(entry, 'v30severity'):
+            self.v30severity =  self._color_severity(entry.v30severity.capitalize())
+        elif hasattr(entry, 'v31severity'):
+            self.v31severity =  self._color_severity(entry.v31severity.capitalize())
 
         self.v2vector = None
         self.v3vector = None
         if hasattr(entry, 'v2vector'):
             self.v2vector =  f"CVSS:2.0/{entry.v2vector}"
-        if hasattr(entry, 'v3vector'):
-            self.v3vector =  entry.v3vector
+        if hasattr(entry, 'v30vector'):
+            self.v30vector =  entry.v30vector
+        elif hasattr(entry, 'v31vector'):
+            self.v31vector =  entry.v31vector
 
-        self.description = entry.cve.description.description_data[0].value
+        self.description = entry.descriptions[0].value.rstrip()
 
     def __repr__(self):
         result = f"\n{self.id}\n\n"
-        if self.v3score:
-            result += f"CVSS v3 Base Score: {self.v3score} ({self.v3severity}) ({self.v3vector})\n"
+        if self.v30score:
+            result += f"CVSS v3.0 Base Score: {self.v30score} ({self.v30severity}) ({self.v30vector})\n"
+        elif self.v31score:
+            result += f"CVSS v3.1 Base Score: {self.v31score} ({self.v31severity}) ({self.v31vector})\n"
         if self.v2score:
             result += f"CVSS v2 Base Score: {self.v2score} ({self.v2severity}) ({self.v2vector})\n\n"
-        if not self.v3score and not self.v2score:
-            result += f"CVSS v3 Base Score: unassigned\n"
+        if not self.v30score and not self.v31score and not self.v2score:
+            result += f"CVSS v3.1 Base Score: unassigned\n"
+            result += f"CVSS v3.0 Base Score: unassigned\n"
             result += f"CVSS v2 Base Score: unassigned\n\n"
         result += f"{self.url}\n\n"
         result += f"{self.description}\n"
@@ -146,11 +158,14 @@ class CvssSeverityFilter():
 
     def match( self, entry):
         if self.version == CVSSV3:
-            if not hasattr(entry, 'v3severity'):
+            if hasattr(entry, 'v30severity'):
+                severity = entry.v30severity
+            elif hasattr(entry, 'v31severity'):
+                severity = entry.v31severity
+            else:
                 return False
-            severity = entry.v3severity
         elif self.version == CVSSV2:
-            if not hasattr(entry, 'v3severity'):
+            if not hasattr(entry, 'v2severity'):
                 return False
             severity = entry.v2severity
 
@@ -189,9 +204,12 @@ class CvssScoreFilter():
 
     def match(self, entry):
         if self.version == CVSSV3:
-            if not hasattr(entry, 'v3score'):
+            if hasattr(entry, 'v30score'):
+                score = entry.v30score
+            elif  hasattr(entry, 'v31score'):
+                score = entry.v31score
+            else:
                 return False
-            score = entry.v3score
         elif self.version == CVSSV2:
             if not hasattr(entry, 'v2score'):
                 return False
@@ -255,6 +273,7 @@ def parse_arguments():
     parser.add_argument('search', help=f'search by keyword (e.g.,"{Ansi.bold("OpenSSL 1.0.2f")}") or CPE (e.g.,"{Ansi.bold("cpe:2.3:a:openssl:openssl:1.0.2f:*:*:*:*:*:*:*")}")')
 
     mode_switch = parser.add_mutually_exclusive_group()
+    mode_switch.add_argument('--cve', action="store_true", help=f'enforce CVE search')
     mode_switch.add_argument('--cpe', action="store_true", help=f'enforce CPE search')
     mode_switch.add_argument('--keyword', action="store_true", help=f'enforce keyword search')
     parser.add_argument('--exact-match', dest='exact_match', action='store_true', help=f'return only results which literally match the keyword')
@@ -276,15 +295,24 @@ def parse_arguments():
     parser.add_argument('--api-key', dest='api_key', default='', help=f'API key for National Vulnerabilities Database (NVD) for faster queries (optional)')
     args = parser.parse_args()
 
-    if not args.cpe and not args.keyword:
+    if not args.cve and not args.cpe and not args.keyword:
         if args.search.lower().startswith('cpe:'):
             args.cpe = True
+            args.cve = False
             args.keyword = False
+        elif args.search.lower().startswith('cve-'):
+            args.cpe = False
+            args.cve = True
+            args.keyword = False
+
+            # NVD API does not like lower case 'cve-...'
+            args.search = args.search.upper()
         else:
             args.cpe = False
+            args.cve = False
             args.keyword = True
 
-    if args.cpe and args.exact_match:
+    if (args.cpe or args.cve) and args.exact_match:
         parser.error('--exact-match requires keyword search')
 
     if args.cwe_id and not re.search(r'^cwe-[0-9]*$', args.cwe_id, re.IGNORECASE):
@@ -327,39 +355,45 @@ def main():
         elif args.severity_filter.version == CVSSV3:
             cvssV3Severity=args.severity_filter.severities[0]
 
-    if args.keyword:
+    if args.cve:
+        print_info(f'Searching by CVE...')
+        cves = nvdlib.searchCVE(cveId=args.search,
+                                limit=args.limit,
+                                key=args.api_key)
+    elif args.keyword:
         print_info(f'Searching by keyword...')
-        cves = nvdlib.searchCVE(keyword=args.search,
+        cves = nvdlib.searchCVE(keywordSearch=args.search,
                                 cvssV2Metrics=args.v2metrics,
                                 cvssV3Metrics=args.v3metrics,
                                 cvssV2Severity=cvssV2Severity,
                                 cvssV3Severity=cvssV3Severity,
                                 cweId=args.cwe_id,
-                                exactMatch=args.exact_match,
+                                keywordExactMatch=args.exact_match,
                                 limit=args.limit,
                                 key=args.api_key)
     elif args.cpe:
         print_info(f'Searching by CPE...')
-        cves = nvdlib.searchCVE(cpeMatchString=args.search,
+        cves = nvdlib.searchCVE(cpeName=args.search,
                                 cvssV2Metrics=args.v2metrics,
                                 cvssV3Metrics=args.v3metrics,
                                 cvssV2Severity=cvssV2Severity,
                                 cvssV3Severity=cvssV3Severity,
                                 cweId=args.cwe_id,
-                                exactMatch=args.exact_match,
+                                keywordExactMatch=args.exact_match,
                                 limit=args.limit,
                                 key=args.api_key)
 
     for entry in cves:
+
         if args.severity_filter and not args.severity_filter.match(entry):
             continue
         if args.score_filter and not args.score_filter.match(entry):
             continue
 
         colored_entry = ColoredEntry(entry)
-        if not colored_entry.v3score and not colored_entry.v2score:
+        if not colored_entry.v30score and not colored_entry.v31score and not colored_entry.v2score:
             entries_unrated.append(colored_entry)
-        elif not colored_entry.v3score:
+        elif not colored_entry.v30score and not colored_entry.v31score:
             entries_v2.append(colored_entry)
         else:
             entries_v3.append(colored_entry)
