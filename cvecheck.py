@@ -5,6 +5,7 @@
 # https://github.com/cddmp/cvecheck
 
 from argparse import ArgumentParser
+from enum import Enum
 import nvdlib
 import os
 import re
@@ -13,56 +14,18 @@ COLORS = True
 CVSSV2 = "v2"
 CVSSV3 = "v3"
 
-class Ansi:
-    ansi_reset = '\033[0m'
-    ansi_bold = '\033[1m'
-    ansi_underline = '\033[4m'
-    ansi_red = '\033[91m'
-    ansi_green = '\033[92m'
-    ansi_yellow = '\033[93m'
-    ansi_blue = '\033[94m'
-    ansi_very_red = '\033[101m'
+class Ansi(Enum):
+    bold = '\033[1m'
+    underline = '\033[4m'
+    red = '\033[91m'
+    green = '\033[92m'
+    yellow = '\033[93m'
+    blue = '\033[94m'
+    very_red = '\033[101m'
 
-    @classmethod
-    def red(cls, string):
+    def __call__(self, string):
         if COLORS:
-            return f"{cls.ansi_red}{string}{cls.ansi_reset}"
-        return string
-
-    @classmethod
-    def very_red(cls, string):
-        if COLORS:
-            return f"{cls.ansi_very_red}{string}{cls.ansi_reset}"
-        return string
-
-    @classmethod
-    def green(cls, string):
-        if COLORS:
-            return f"{cls.ansi_green}{string}{cls.ansi_reset}"
-        return string
-
-    @classmethod
-    def yellow(cls, string):
-        if COLORS:
-            return f"{cls.ansi_yellow}{string}{cls.ansi_reset}"
-        return string
-
-    @classmethod
-    def blue(cls, string):
-        if COLORS:
-            return f"{cls.ansi_blue}{string}{cls.ansi_reset}"
-        return string
-
-    @classmethod
-    def bold(cls, string):
-        if COLORS:
-            return f"{cls.ansi_bold}{string}{cls.ansi_reset}"
-        return string
-
-    @classmethod
-    def underline(cls, string):
-        if COLORS:
-            return f"{cls.ansi_underline}{string}{cls.ansi_reset}"
+            return f'{self.value}{string}\033[0m'
         return string
 
 class ColoredEntry():
