@@ -9,12 +9,13 @@ from enum import Enum
 import nvdlib
 import os
 import re
+from string import Template
+import sys
 
-COLORS = True
 CVSSV2 = "v2"
 CVSSV3 = "v3"
 
-class Ansi(Enum):
+class Colors(Enum):
     bold = '\033[1m'
     underline = '\033[4m'
     red = '\033[91m'
@@ -23,14 +24,74 @@ class Ansi(Enum):
     blue = '\033[94m'
     very_red = '\033[101m'
 
-    def __call__(self, string):
-        if COLORS:
-            return f'{self.value}{string}\033[0m'
-        return string
+    def __call__(self, string, no_colors=False):
+        if no_colors:
+            return string
+        return f'{self.value}{string}\033[0m'
+
+class Output():
+    NO_COLOR = False
+    QUIET = False
+
+    @classmethod
+    def banner(self):
+        if self.QUIET:
+            return
+        print(Colors.bold(Colors.green('-= CVECHECK =-', self.NO_COLOR), self.NO_COLOR), end='\n\n')
+
+    @classmethod
+    def info(self, msg):
+        if self.QUIET:
+            return
+
+        print(Colors.bold(f'[*] {msg}', self.NO_COLOR))
+
+    @classmethod
+    def cves_total(self, total_all):
+        if self.QUIET:
+            return
+
+        print(Colors.bold('[*] Found ', self.NO_COLOR) + Colors.red(str(total_all), self.NO_COLOR) + Colors.bold(' CVE(s)', self.NO_COLOR))
+
+    @classmethod
+    def cves_in_analysis_state(self, total_unrated, total_all):
+        if self.QUIET:
+            return
+
+        print(Colors.bold('[*] ', self.NO_COLOR) + Colors.red(str(total_unrated), self.NO_COLOR) + '/' + Colors.red(str(total_all), self.NO_COLOR) + Colors.bold(' CVE(s) in analysis state (no CVSS assigned yet)', self.NO_COLOR))
+
+    @classmethod
+    def cves_with_both_scores(self, total_v3, total_all):
+        if self.QUIET:
+            return
+
+        print(Colors.bold('[*] ', self.NO_COLOR) + Colors.red(str(total_v3), self.NO_COLOR) + '/' + Colors.red(str(total_all), self.NO_COLOR) + Colors.bold(' CVE(s) with CVSS v3 and CVSS v2 score', self.NO_COLOR))
+
+    @classmethod
+    def hint(self, msg):
+        if self.QUIET:
+            return
+
+        print(Colors.yellow(f'[*] {msg}', self.NO_COLOR))
+
+    @classmethod
+    def error(self, msg):
+        if self.QUIET:
+            return
+
+        print(Colors.red(f'[!] {msg}', self.NO_COLOR))
+
+    @classmethod
+    def cves_with_v2_score_only(self, total_v2, total_all):
+        if self.QUIET:
+            return
+
+        print(Colors.bold('[*] ', self.NO_COLOR) + Colors.red(str(total_v2), self.NO_COLOR) + '/' + Colors.red(str(total_all), self.NO_COLOR) + Colors.bold(' CVE(s) with CVSS v2 score only', self.NO_COLOR))
 
 class ColoredEntry():
-    def __init__(self, entry):
+    def __init__(self, entry, template):
         self.entry = entry
+        self.template = template
         self.id = self._color_id(entry.id)
         self.url = self.entry.url
 
@@ -73,24 +134,24 @@ class ColoredEntry():
         elif self.v31score:
             result += f"CVSS v3.1 Base Score: {self.v31score} ({self.v31severity}) ({self.v31vector})\n"
         if self.v2score:
-            result += f"CVSS v2 Base Score: {self.v2score} ({self.v2severity}) ({self.v2vector})\n\n"
+            result += f"CVSS v2 Base Score: {self.v2score} ({self.v2severity}) ({self.v2vector})\n"
         if not self.v30score and not self.v31score and not self.v2score:
             result += f"CVSS v3.1 Base Score: unassigned\n"
             result += f"CVSS v3.0 Base Score: unassigned\n"
-            result += f"CVSS v2 Base Score: unassigned\n\n"
-        result += f"{self.url}\n\n"
+            result += f"CVSS v2 Base Score: unassigned\n"
+        result += f"\n{self.url}\n\n"
         result += f"{self.description}\n"
         return result
 
     def _color_id(self, cve_id):
-        return Ansi.underline(Ansi.bold(cve_id))
+        return Colors.underline(Colors.bold(cve_id))
     
     def _color_severity(self, severity):
         mapping = {
-                "Low": Ansi.green,
-                "Medium": Ansi.yellow,
-                "High": Ansi.red,
-                "Critical": Ansi.very_red, 
+                "Low": Colors.green,
+                "Medium": Colors.yellow,
+                "High": Colors.red,
+                "Critical": Colors.very_red,
             }
         return mapping[severity](severity)
 
@@ -98,16 +159,16 @@ class ColoredEntry():
         if score == 0.0:
             return str(score)
         if 0.1 <= score <= 3.9:
-            return Ansi.green(str(score))
+            return Colors.green(str(score))
         if 4.0 <= score <= 6.9:
-            return Ansi.yellow(str(score))
+            return Colors.yellow(str(score))
         if not cvss3:
             if 7.0 <= score <= 10.0:
-                return Ansi.red(str(score))
+                return Colors.red(str(score))
         if 7.0 <= score <= 8.9:
-            return Ansi.red(str(score))
+            return Colors.red(str(score))
         if 9.0 <= score <= 10.0:
-            return Ansi.very_red(str(score))
+            return Colors.very_red(str(score))
 
 class CvssSeverityFilter():
     def __init__(self, version, severity_filter):
@@ -225,36 +286,37 @@ class CvssScoreFilter():
             return False
         return True
 
-def print_banner():
-    print(Ansi.bold(Ansi.green('-= CVECHECK =-')), end='\n\n')
-
-def print_info(msg):
-    print(Ansi.bold(f'[*] {msg}'))
+def abort(msg):
+    Output.error(msg)
+    exit()
 
 def parse_arguments():
     parser = ArgumentParser(description="""A simple tool to query the National Vulnerability Database (NVD) with colors support.""")
-    parser.add_argument('search', help=f'search by keyword (e.g.,"{Ansi.bold("OpenSSL 1.0.2f")}"), CVE (e.g.,"{Ansi.bold("CVE-2014-0160")}") or CPE (e.g.,"{Ansi.bold("cpe:2.3:a:openssl:openssl:1.0.2f:*:*:*:*:*:*:*")}")')
+    parser.add_argument('search', help=f'search by keyword (e.g.,"{Colors.bold("OpenSSL 1.0.2f")}"), CVE (e.g.,"{Colors.bold("CVE-2014-0160")}") or CPE (e.g.,"{Colors.bold("cpe:2.3:a:openssl:openssl:1.0.2f:*:*:*:*:*:*:*")}")')
 
     mode_switch = parser.add_mutually_exclusive_group()
     mode_switch.add_argument('--cve', action="store_true", help=f'enforce CVE search')
     mode_switch.add_argument('--cpe', action="store_true", help=f'enforce CPE search')
+    mode_switch.add_argument('--scpe', action="store_true", help=f'enforce "simplified" CPE search')
     mode_switch.add_argument('--keyword', action="store_true", help=f'enforce keyword search')
-    parser.add_argument('--exact-match', dest='exact_match', action='store_true', help=f'return only results which literally match the keyword')
 
+    parser.add_argument('--exact-match', dest='exact_match', action='store_true', help=f'return only results which literally match the keyword')
     parser.add_argument('--limit', dest='limit', type=int, help=f'limit the number of results at API level')
+    parser.add_argument('--quiet', dest='quiet', action="store_true", default=False, help=f'only print result - will be automatically disabled if input is required')
+    parser.add_argument('--template', dest='template', default='', help=f'define a template to be used for printing results')
 
     parser_metrics = parser.add_mutually_exclusive_group()
-    parser_metrics.add_argument('--filter-v2metrics', dest='v2metrics', help=f'filter by CVSS v2 metrics (e.g.,"{Ansi.bold("I:P")}")')
-    parser_metrics.add_argument('--filter-v3metrics', dest='v3metrics', help=f'filter by CVSS v3 metrics (e.g.,"{Ansi.bold("AV:N")}")')
+    parser_metrics.add_argument('--filter-v2metrics', dest='v2metrics', help=f'filter by CVSS v2 metrics (e.g.,"{Colors.bold("I:P")}")')
+    parser_metrics.add_argument('--filter-v3metrics', dest='v3metrics', help=f'filter by CVSS v3 metrics (e.g.,"{Colors.bold("AV:N")}")')
 
     parser_score = parser.add_mutually_exclusive_group()
-    parser_score.add_argument('--filter-v2score', dest='v2score', help=f'filter by CVSS v2 score (e.g.,"{Ansi.bold("3.7-5.0")}" or only "{Ansi.bold("3.7")}")')
-    parser_score.add_argument('--filter-v3score', dest='v3score', help=f'filter by CVSS v3 score (e.g.,"{Ansi.bold("3.7-5.0")}" or only "{Ansi.bold("3.7")}")')
+    parser_score.add_argument('--filter-v2score', dest='v2score', help=f'filter by CVSS v2 score (e.g.,"{Colors.bold("3.7-5.0")}" or only "{Colors.bold("3.7")}")')
+    parser_score.add_argument('--filter-v3score', dest='v3score', help=f'filter by CVSS v3 score (e.g.,"{Colors.bold("3.7-5.0")}" or only "{Colors.bold("3.7")}")')
 
     parser_severity = parser.add_mutually_exclusive_group()
-    parser_severity.add_argument('--filter-v2severity', dest='v2severity', help=f'filter by CVSS v2 severity (e.g.,"{Ansi.bold("medium,high")}" or only "{Ansi.bold("high")}")')
-    parser_severity.add_argument('--filter-v3severity', dest='v3severity', help=f'filter by CVSS v3 severity (e.g.,"{Ansi.bold("medium,high")}" or only "{Ansi.bold("high")}")')
-    parser_severity.add_argument('--filter-cweid', dest='cwe_id', help=f'filter by CWE ID (e.g., "{Ansi.bold("CWE-125")}")')
+    parser_severity.add_argument('--filter-v2severity', dest='v2severity', help=f'filter by CVSS v2 severity (e.g.,"{Colors.bold("medium,high")}" or only "{Colors.bold("high")}")')
+    parser_severity.add_argument('--filter-v3severity', dest='v3severity', help=f'filter by CVSS v3 severity (e.g.,"{Colors.bold("medium,high")}" or only "{Colors.bold("high")}")')
+    parser_severity.add_argument('--filter-cweid', dest='cwe_id', help=f'filter by CWE ID (e.g., "{Colors.bold("CWE-125")}")')
     parser.add_argument('--api-key', dest='api_key', default='', help=f'API key for National Vulnerabilities Database (NVD) for faster queries (optional)')
     args = parser.parse_args()
 
@@ -266,6 +328,12 @@ def parse_arguments():
 
             # NVD API does not like upper case 'CPE:...'
             args.search = args.search.lower()
+        elif args.search.lower().startswith('scpe:'):
+            args.cpe = True
+            args.cve = False
+            args.keyword = False
+
+            args.search = f'cpe:2.3:a:{args.search.split(":", 1)[1]}:*:*:*:*:*:*:*'
         elif args.search.lower().startswith('cve-'):
             args.cpe = False
             args.cve = True
@@ -301,87 +369,155 @@ def parse_arguments():
 
     return args
 
-def main():
-    global COLORS
-    if "NO_COLOR" in os.environ:
-        COLORS = False
+class CveCheck():
+    def __init__(self, args):
+        self.args = args
+        self.entries_v2 = []
+        self.entries_v3 = []
+        self.entries_unrated = []
+        self.cvssV2Severity = False
+        self.cvssV3Severity = False
 
-    print_banner()
-    args = parse_arguments()
+    def run(self):
+        if self.args.severity_filter and self.args.severity_filter.single_filter:
+            if self.args.severity_filter.version == CVSSV2:
+                self.cvssV2Severity = self.args.severity_filter.severities[0]
+            elif self.args.severity_filter.version == CVSSV3:
+                self.cvssV3Severity = self.args.severity_filter.severities[0]
 
-    entries_v2 = []
-    entries_v3 = []
-    entries_unrated = []
+        if self.args.cve:
+            cves = self._search_by_cve()
+        elif self.args.keyword:
+            cves = self._search_by_keyword()
+        elif self.args.cpe:
+            cves = self._search_by_cpe()
 
-    cvssV2Severity = False
-    cvssV3Severity = False
-    if args.severity_filter and args.severity_filter.single_filter:
-        if args.severity_filter.version == CVSSV2:
-            cvssV2Severity=args.severity_filter.severities[0]
-        elif args.severity_filter.version == CVSSV3:
-            cvssV3Severity=args.severity_filter.severities[0]
+        if cves is None:
+            abort('No CVEs found.')
 
-    if args.cve:
-        print_info(f'Searching by CVE...')
-        cves = nvdlib.searchCVE(cveId=args.search,
-                                limit=args.limit,
-                                key=args.api_key)
-    elif args.keyword:
-        print_info(f'Searching by keyword...')
-        cves = nvdlib.searchCVE(keywordSearch=args.search,
-                                cvssV2Metrics=args.v2metrics,
-                                cvssV3Metrics=args.v3metrics,
-                                cvssV2Severity=cvssV2Severity,
-                                cvssV3Severity=cvssV3Severity,
-                                cweId=args.cwe_id,
-                                keywordExactMatch=args.exact_match,
-                                limit=args.limit,
-                                key=args.api_key)
-    elif args.cpe:
-        print_info(f'Searching by CPE...')
-        cves = nvdlib.searchCVE(cpeName=args.search,
-                                cvssV2Metrics=args.v2metrics,
-                                cvssV3Metrics=args.v3metrics,
-                                cvssV2Severity=cvssV2Severity,
-                                cvssV3Severity=cvssV3Severity,
-                                cweId=args.cwe_id,
-                                keywordExactMatch=args.exact_match,
-                                limit=args.limit,
-                                key=args.api_key)
+        for entry in cves:
+            if self.args.severity_filter and not self.args.severity_filter.match(entry):
+                continue
+            if self.args.score_filter and not self.args.score_filter.match(entry):
+                continue
 
-    for entry in cves:
-        if args.severity_filter and not args.severity_filter.match(entry):
-            continue
-        if args.score_filter and not args.score_filter.match(entry):
-            continue
+            colored_entry = ColoredEntry(entry, self.args.template)
+            if not colored_entry.v30score and not colored_entry.v31score and not colored_entry.v2score:
+                self.entries_unrated.append(colored_entry)
+            elif not colored_entry.v30score and not colored_entry.v31score:
+                self.entries_v2.append(colored_entry)
+            else:
+                self.entries_v3.append(colored_entry)
 
-        colored_entry = ColoredEntry(entry)
-        if not colored_entry.v30score and not colored_entry.v31score and not colored_entry.v2score:
-            entries_unrated.append(colored_entry)
-        elif not colored_entry.v30score and not colored_entry.v31score:
-            entries_v2.append(colored_entry)
+        # Sort entries by score in reverse order
+        self.entries_v2 = sorted(self.entries_v2, key=lambda x: x.entry.v2score, reverse=True)
+        self.entries_v3 = sorted(self.entries_v3, key=lambda x: x.entry.v3score, reverse=True)
+
+        total_unrated = len(self.entries_unrated)
+        total_v2 = len(self.entries_v2)
+        total_v3 = len(self.entries_v3)
+        total_all = total_unrated + total_v2 + total_v3
+
+        Output.cves_total(total_all)
+        Output.cves_in_analysis_state(total_unrated, total_all)
+        for entry in self.entries_unrated:
+            print(entry)
+        Output.cves_with_both_scores(total_v3, total_all)
+        for entry in self.entries_v3:
+            print(entry)
+        Output.cves_with_v2_score_only(total_v2, total_all)
+        for entry in self.entries_v2:
+            print(entry)
+
+    def _search_by_cve(self):
+        Output.info(f'Searching by CVE...')
+        cves = nvdlib.searchCVE(cveId=self.args.search,
+                                limit=self.args.limit,
+                                key=self.args.api_key)
+
+        return cves
+
+    def _search_by_keyword(self):
+        Output.info(f'Searching by keyword...')
+        cves = nvdlib.searchCVE(keywordSearch=self.args.search,
+                                cvssV2Metrics=self.args.v2metrics,
+                                cvssV3Metrics=self.args.v3metrics,
+                                cvssV2Severity=self.cvssV2Severity,
+                                cvssV3Severity=self.cvssV3Severity,
+                                cweId=self.args.cwe_id,
+                                keywordExactMatch=self.args.exact_match,
+                                limit=self.args.limit,
+                                key=self.args.api_key)
+
+    def _search_by_cpe(self):
+        Output.info(f'Searching by CPE...')
+        cpes = nvdlib.searchCPE(cpeMatchString=self.args.search,
+                                key=self.args.api_key)
+
+        if len(cpes) == 0:
+            abort(f'The given CPE {args.search} could not be found.')
+        elif len(cpes) > 1:
+            Output.QUIET = False
+            Output.hint(f'There were {len(cpes)} matching CPEs found. Please choose the right one to continue:')
+            for idx, cpe in enumerate(cpes):
+                print(f'   {idx+1}: {cpe.cpeName}')
+
+            selection = self._select_cpe(cpes)
+            self.args.search = cpes[selection].cpeName
+            Output.hint(f'Selected CPE: {self.args.search}')
         else:
-            entries_v3.append(colored_entry)
+            Output.QUIET = False
+            Output.hint(f'Found one matching CPE {cpes[0].cpeName}. Will use that one.')
+            self.args.search = cpes[0].cpeName
 
-    # Sort entries by score in reverse order
-    entries_v2 = sorted(entries_v2, key=lambda x: x.entry.v2score, reverse=True)
-    entries_v3 = sorted(entries_v3, key=lambda x: x.entry.v3score, reverse=True)
+        cves = nvdlib.searchCVE(cpeName=self.args.search,
+                                cvssV2Metrics=self.args.v2metrics,
+                                cvssV3Metrics=self.args.v3metrics,
+                                cvssV2Severity=self.cvssV2Severity,
+                                cvssV3Severity=self.cvssV3Severity,
+                                cweId=self.args.cwe_id,
+                                keywordExactMatch=self.args.exact_match,
+                                limit=self.args.limit,
+                                key=self.args.api_key)
 
-    total_unrated = len(entries_unrated)
-    total_v2 = len(entries_v2)
-    total_v3 = len(entries_v3)
-    total_all = total_unrated + total_v2 + total_v3
+        return cves
 
-    print(Ansi.bold('[*] Found ') + Ansi.red(str(total_all)) + Ansi.bold(' CVE(s)'))
-    print(Ansi.bold('[*] ') + Ansi.red(str(total_unrated)) + '/' + Ansi.red(str(total_all)) + Ansi.bold(' CVE(s) in analysis state (no CVSS assigned yet)'))
-    for entry in entries_unrated:
-        print(entry)
-    print(Ansi.bold('[*] ') + Ansi.red(str(total_v3)) + '/' + Ansi.red(str(total_all)) + Ansi.bold(' CVE(s) with CVSS v3 and CVSS v2 score'))
-    for entry in entries_v3:
-        print(entry)
-    print(Ansi.bold('[*] ') + Ansi.red(str(total_v2)) + '/' + Ansi.red(str(total_all)) + Ansi.bold(' CVE(s) with CVSS v2 score only'))
-    for entry in entries_v2:
-        print(entry)
+    def _select_cpe(self, cpes):
+        while True:
+            line = sys.stdin.readline().strip()
+            try:
+                selection = int(line)
+                if not  0 < selection <= len(cpes):
+                    raise Exception
+                break
+            except:
+                Output.error('Input error. Choose a valid index.')
+        return selection-1
+
+def exception_handler(exception):
+    exceptions = [
+            'Temporary failure in name resolution',
+        ]
+
+    result = ''.join([item for item in exceptions if item in str(exception)])
+    if not result:
+        result = f'Unexpected error:\n\n {str(exception)}.\n\nPlease open a GitHub issue.'
+    abort(''.join(result))
+
+
+def main():
+    args = parse_arguments()
+    Output.QUIET = args.quiet
+    if 'NO_COLOR' in os.environ:
+        Output.NO_COLOR = True
+
+    Output.banner()
+
+    try:
+        cvecheck = CveCheck(args)
+        cvecheck.run()
+    except Exception as e:
+        exception_handler(e)
 
 if __name__ == "__main__":
     main()
