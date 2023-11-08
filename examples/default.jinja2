@@ -1,0 +1,24 @@
+{{id}}
+
+{% if v31score is not none %}
+CVSS v3.1 Base Score: {{v31score}} ({{v31severity}}) ({{v31vector}})
+{% elif v30score is not none %}
+CVSS v3.0 Base Score: {{v30score}} ({{v30severity}}) ({{v30vector}})
+{% endif %}
+{% if v2score is not none %}
+CVSS v2.0 Base Score: {{v2score}} ({{v2severity}}) ({{v2vector}})
+{% endif %}
+{% if v31score is none %}
+  {% if v30score is none %}
+    {% if v2score is none %}
+      CVSS v3.1 Base Score: unassigned
+      CVSS v3.0 Base Score: unassigned
+      CVSS v2 Base Score: unassigned
+    {% endif %}
+  {% endif %}
+{% endif %}
+
+{{url}}
+
+{{description}}
+
