@@ -7,9 +7,9 @@
 from argparse import ArgumentParser
 from enum import Enum
 import nvdlib
+from jinja2 import Template, Environment
 import os
 import re
-from string import Template
 import sys
 
 CVSSV2 = "v2"
@@ -108,7 +108,8 @@ class ColoredEntry():
             self.entry.v3score = self.entry.v31score
 
         self.v2severity = None
-        self.v3severity = None
+        self.v30severity = None
+        self.v31severity = None
         if hasattr(entry, 'v2severity'):
             self.v2severity =  self._color_severity(entry.v2severity.capitalize())
         if hasattr(entry, 'v30severity'):
@@ -117,7 +118,8 @@ class ColoredEntry():
             self.v31severity =  self._color_severity(entry.v31severity.capitalize())
 
         self.v2vector = None
-        self.v3vector = None
+        self.v30vector = None
+        self.v31vector = None
         if hasattr(entry, 'v2vector'):
             self.v2vector =  f"CVSS:2.0/{entry.v2vector}"
         if hasattr(entry, 'v30vector'):
@@ -128,19 +130,22 @@ class ColoredEntry():
         self.description = entry.descriptions[0].value.rstrip()
 
     def __repr__(self):
-        result = f"\n{self.id}\n\n"
-        if self.v30score:
-            result += f"CVSS v3.0 Base Score: {self.v30score} ({self.v30severity}) ({self.v30vector})\n"
-        elif self.v31score:
-            result += f"CVSS v3.1 Base Score: {self.v31score} ({self.v31severity}) ({self.v31vector})\n"
-        if self.v2score:
-            result += f"CVSS v2 Base Score: {self.v2score} ({self.v2severity}) ({self.v2vector})\n"
-        if not self.v30score and not self.v31score and not self.v2score:
-            result += f"CVSS v3.1 Base Score: unassigned\n"
-            result += f"CVSS v3.0 Base Score: unassigned\n"
-            result += f"CVSS v2 Base Score: unassigned\n"
-        result += f"\n{self.url}\n\n"
-        result += f"{self.description}\n"
+        env = Environment(trim_blocks=True)
+        with open(self.template) as f:
+            tmpl = env.from_string(f.read())
+
+        result = tmpl.render(id=self.id,
+                             url=self.url,
+                             description=self.description,
+                             v2score=self.v2score,
+                             v30score=self.v30score,
+                             v31score=self.v31score,
+                             v2severity=self.v2severity,
+                             v30severity=self.v30severity,
+                             v31severity=self.v31severity,
+                             v2vector=self.v2vector,
+                             v30vector=self.v30vector,
+                             v31vector=self.v31vector)
         return result
 
     def _color_id(self, cve_id):
@@ -303,7 +308,7 @@ def parse_arguments():
     parser.add_argument('--exact-match', dest='exact_match', action='store_true', help=f'return only results which literally match the keyword')
     parser.add_argument('--limit', dest='limit', type=int, help=f'limit the number of results at API level')
     parser.add_argument('--quiet', dest='quiet', action="store_true", default=False, help=f'only print result - will be automatically disabled if input is required')
-    parser.add_argument('--template', dest='template', default='', help=f'define a template to be used for printing results')
+    parser.add_argument('--template', dest='template', default='examples/default.jinja2', help=f'path to jinja2 template for CVE output')
 
     parser_metrics = parser.add_mutually_exclusive_group()
     parser_metrics.add_argument('--filter-v2metrics', dest='v2metrics', help=f'filter by CVSS v2 metrics (e.g.,"{Colors.bold("I:P")}")')
@@ -434,7 +439,6 @@ class CveCheck():
         cves = nvdlib.searchCVE(cveId=self.args.search,
                                 limit=self.args.limit,
                                 key=self.args.api_key)
-
         return cves
 
     def _search_by_keyword(self):
@@ -466,7 +470,6 @@ class CveCheck():
             self.args.search = cpes[selection].cpeName
             Output.hint(f'Selected CPE: {self.args.search}')
         else:
-            Output.QUIET = False
             Output.hint(f'Found one matching CPE {cpes[0].cpeName}. Will use that one.')
             self.args.search = cpes[0].cpeName
 
@@ -479,7 +482,6 @@ class CveCheck():
                                 keywordExactMatch=self.args.exact_match,
                                 limit=self.args.limit,
                                 key=self.args.api_key)
-
         return cves
 
     def _select_cpe(self, cpes):
@@ -501,7 +503,7 @@ def exception_handler(exception):
 
     result = ''.join([item for item in exceptions if item in str(exception)])
     if not result:
-        result = f'Unexpected error:\n\n {str(exception)}.\n\nPlease open a GitHub issue.'
+        result = f'Unexpected error:\n\n {str(exception)}.'
     abort(''.join(result))
 
 
