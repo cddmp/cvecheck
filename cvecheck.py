@@ -460,7 +460,7 @@ class CveCheck():
                                 key=self.args.api_key)
 
         if len(cpes) == 0:
-            abort(f'The given CPE {args.search} could not be found.')
+            abort(f'The given CPE {self.args.search} could not be found.')
         elif len(cpes) > 1:
             Output.QUIET = False
             Output.hint(f'There were {len(cpes)} matching CPEs found. Please choose the right one to continue:')
