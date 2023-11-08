@@ -452,6 +452,7 @@ class CveCheck():
                                 keywordExactMatch=self.args.exact_match,
                                 limit=self.args.limit,
                                 key=self.args.api_key)
+        return cves
 
     def _search_by_cpe(self):
         Output.info(f'Searching by CPE...')
