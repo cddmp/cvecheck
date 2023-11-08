@@ -73,12 +73,14 @@ The metrics filter is passed directly to the API. All the filtering happens ther
 The API does not support filtering by score. Therefore, the filter is applied locally once the CVEs have been fetched from the API. The filter allows to either filter by range or by a single value:
 
 ```./cvecheck.py --filter-v3score '7.5'```
+
 ```./cvecheck.py --filter-v3score '4.0-6.9'```
 
 ### Severity filter
 The API only allows to filter by one severity (e.g., 'MEDIUM'). The tool allows to filter by several severity values. If only one severity is being passed the filtering will happen at the API. In all other cases (multiple severity values being passed), the filtering will happen locally:
 
 ```./cvecheck.py --filter-v3severity 'critical'```
+
 ```./cvecheck.py --filter-v3severity 'high,critical'```
 
 ### Template based output
