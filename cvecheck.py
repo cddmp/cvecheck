@@ -338,7 +338,7 @@ def parse_arguments():
             args.cve = False
             args.keyword = False
 
-            args.search = f'cpe:2.3:a:{args.search.split(":", 1)[1]}:*:*:*:*:*:*:*'
+            args.search = f'cpe:2.3:*:{args.search.split(":", 1)[1]}:*:*:*:*:*:*:*'
         elif args.search.lower().startswith('cve-'):
             args.cpe = False
             args.cve = True

@@ -44,15 +44,15 @@ Below is an example where the ``vendor`` and ``product`` are set to 'openssl' wi
 The tool does a CPE search first. If the CPE is not unique and would therefore match different CPEs in the NVD database, a list of possible CPEs will be shown, where one needs to be selected. If a wildcard is being used and only one CPE would match, then this CPE is automatically selected for the search and the tool will continue without showing any prompt.
 
 ### 'Simplified' CPE search
-The CPE strings are very long and hard to remember. Therefore it supports, what I call, 'simplified' CPE strings. These strings hae the following format:
+The CPE strings are very long and hard to remember. Therefore it supports, what I call, 'simplified' CPE strings. These strings have the following format:
 
 ``scpe:<vendor>:<product>:<version>``
 
-As with the normal CPE, stars can be used as wild cards. Below is an example where the ``vendor`` is set to '*', ``product`` is set to 'openssl' and ``version`` is '1.0.2f'.
+As with the normal CPE, stars can be used as wild cards. Below is an example where ``vendor`` is set to '*', ``product`` is set to 'openssl' and ``version`` is '1.0.2f'.
 
 Apart from that, the same applies as with the CPE search described above.
 
-```./cvecheck.py '*:openssl:1.0.2f```
+```./cvecheck.py 'scpe:*:openssl:1.0.2f```
 
 ### Keyword based search
 If the keyword does not start with 'CPE:', the keyword based search will be used.
