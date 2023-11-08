@@ -67,21 +67,19 @@ Various filters are supported. Results can be filtered by metrics, vector or sco
 ### Metrics filter
 The metrics filter is passed directly to the API. All the filtering happens therefore at the API backend. The following example filters for all CVEs with attack vector 'Network'.
 
-```./cvecheck.py --filter-v3metrics 'AV:N'```
+```./cvecheck.py 'scpe:openssl:openssl:1.0.2f' --filter-v3metrics 'AV:N'```
 
 ### Score filter
 The API does not support filtering by score. Therefore, the filter is applied locally once the CVEs have been fetched from the API. The filter allows to either filter by range or by a single value:
 
-```./cvecheck.py --filter-v3score '7.5'```
+```./cvecheck.py 'scpe:openssl:openssl:1.0.2f' --filter-v3score '7.5'```
 
-```./cvecheck.py --filter-v3score '4.0-6.9'```
+```./cvecheck.py 'scpe:openssl:openssl:1.0.2f' --filter-v3score '4.0-6.9'```
 
 ### Severity filter
 The API only allows to filter by one severity (e.g., 'MEDIUM'). The tool allows to filter by several severity values. If only one severity is being passed the filtering will happen at the API. In all other cases (multiple severity values being passed), the filtering will happen locally:
 
-```./cvecheck.py --filter-v3severity 'critical'```
-
-```./cvecheck.py --filter-v3severity 'high,critical'```
+```./cvecheck.py 'scpe:openssl:openssl:1.0.2f' --filter-v3severity high,critical```
 
 ### Template based output
 Sometimes one needs a more verbose output like the CVE id, the base scores as well as the description. Sometimes, e.g, for a table in a report, one only needs a list of CVEs without any description but with most recent CVSS base score. For this, template support was added. Some examples are in the example directory. The templates can simply passed with the ``--template`` parameter.
