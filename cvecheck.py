@@ -351,6 +351,10 @@ def parse_arguments():
             args.cve = False
             args.keyword = True
 
+
+    # Ensure args.search does not contain leading or trailing whitespace
+    args.search = args.search.strip()
+
     if (args.cpe or args.cve) and args.exact_match:
         parser.error('--exact-match requires keyword search')
 
