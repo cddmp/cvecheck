@@ -11,6 +11,7 @@ from jinja2 import Template, Environment
 import os
 import re
 import sys
+from uuid import UUID
 
 CVSSV2 = "v2"
 CVSSV3 = "v3"
@@ -332,6 +333,13 @@ def parse_arguments():
     if args.api_key and args.delay < 0.6:
         parser.error('Delay must be equal or greater than 0.6 seconds')
 
+    if args.api_key:
+        try:
+            uuid = UUID(args.api_key)
+            args.api_key = str(uuid)
+        except Exception as e:
+            parser.error('Invalid API key given, should be a valid UUID')
+
     # Ensure args.search does not contain leading or trailing whitespace
     args.search = args.search.strip()
 
@@ -520,7 +528,6 @@ def exception_handler(exception):
     if not result:
         result = f'Unexpected error:\n\n {str(exception)}.'
     abort(''.join(result))
-
 
 def main():
     args = parse_arguments()

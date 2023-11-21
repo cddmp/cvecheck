@@ -84,6 +84,13 @@ The API only allows to filter by one severity (e.g., 'MEDIUM'). The tool allows 
 ### Template based output
 Sometimes one needs a more verbose output like the CVE id, the base scores as well as the description. Sometimes, e.g, for a table in a report, one only needs a list of CVEs without any description but with most recent CVSS base score. For this, template support was added. Some examples are in the example directory. The templates can simply passed with the ``--template`` parameter.
 
+### API key
+The NVD API by default delays any request for 6 seconds, if no API key is used. When an API key is used, the delay will be lowered to 0.6 seconds. Still, the best practices published for the API (see https://nvd.nist.gov/developers/start-here) states, that users should "sleep" their scripts for 6 seconds between requests.
+This delay can therefore be lowered to 0.6 seconds with the ``--delay 0.6`` parameter. If more than one request is done, the timing as recommended by NIST should be used.
+
+The API key is a UUID and can be requested for free here: https://nvd.nist.gov/developers/request-an-api-key
+
+Once a key is obtained, it can take some minutes for the key to become active. If the key is not active the API will return an HTTP 404 error for every request.
 
 ## Credits
 The tool uses vehemont's nvdlib (https://github.com/Vehemont/nvdlib), a python wrapper for the NVD CVE/CPE API.
