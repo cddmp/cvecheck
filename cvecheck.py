@@ -327,10 +327,10 @@ def parse_arguments():
 
     api_settings = parser.add_argument_group('API settings')
     api_settings.add_argument('--api-key', dest='api_key', default='', help=f'API key for National Vulnerabilities Database (NVD) for faster queries (optional)')
-    api_settings.add_argument('--delay', dest='delay', default=6, type=float, help=f'Request delay, by default 6 seconds as requested by NIST, can be lowered to 0.6 seconds when an API key is used')
+    api_settings.add_argument('--delay', dest='delay', default=None, type=float, help=f'Request delay, by default 6 seconds as requested by NIST, can be lowered to 0.6 seconds when an API key is used')
     args = parser.parse_args()
 
-    if args.api_key and args.delay < 0.6:
+    if args.api_key and args.delay is not None and args.delay < 0.6:
         parser.error('Delay must be equal or greater than 0.6 seconds')
 
     if args.api_key:
