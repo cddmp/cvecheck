@@ -332,6 +332,9 @@ def parse_arguments():
     if args.api_key and args.delay < 0.6:
         parser.error('Delay must be equal or greater than 0.6 seconds')
 
+    # Ensure args.search does not contain leading or trailing whitespace
+    args.search = args.search.strip()
+
     if not args.cve and not args.cpe and not args.keyword:
         if args.search.lower().startswith('cpe:'):
             args.cpe = True
@@ -357,10 +360,6 @@ def parse_arguments():
             args.cpe = False
             args.cve = False
             args.keyword = True
-
-
-    # Ensure args.search does not contain leading or trailing whitespace
-    args.search = args.search.strip()
 
     if (args.cpe or args.cve) and args.exact_match:
         parser.error('--exact-match requires keyword search')
