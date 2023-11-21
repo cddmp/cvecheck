@@ -322,8 +322,15 @@ def parse_arguments():
     parser_severity.add_argument('--filter-v2severity', dest='v2severity', help=f'filter by CVSS v2 severity (e.g.,"{Colors.bold("medium,high")}" or only "{Colors.bold("high")}")')
     parser_severity.add_argument('--filter-v3severity', dest='v3severity', help=f'filter by CVSS v3 severity (e.g.,"{Colors.bold("medium,high")}" or only "{Colors.bold("high")}")')
     parser_severity.add_argument('--filter-cweid', dest='cwe_id', help=f'filter by CWE ID (e.g., "{Colors.bold("CWE-125")}")')
-    parser.add_argument('--api-key', dest='api_key', default='', help=f'API key for National Vulnerabilities Database (NVD) for faster queries (optional)')
+
+
+    api_settings = parser.add_argument_group('API settings')
+    api_settings.add_argument('--api-key', dest='api_key', default='', help=f'API key for National Vulnerabilities Database (NVD) for faster queries (optional)')
+    api_settings.add_argument('--delay', dest='delay', default=6, type=float, help=f'Request delay, by default 6 seconds as requested by NIST, can be lowered to 0.6 seconds when an API key is used')
     args = parser.parse_args()
+
+    if args.api_key and args.delay < 0.6:
+        parser.error('Delay must be equal or greater than 0.6 seconds')
 
     if not args.cve and not args.cpe and not args.keyword:
         if args.search.lower().startswith('cpe:'):
@@ -442,6 +449,7 @@ class CveCheck():
         Output.info(f'Searching by CVE...')
         cves = nvdlib.searchCVE(cveId=self.args.search,
                                 limit=self.args.limit,
+                                delay=self.args.delay,
                                 key=self.args.api_key)
         return cves
 
@@ -455,12 +463,14 @@ class CveCheck():
                                 cweId=self.args.cwe_id,
                                 keywordExactMatch=self.args.exact_match,
                                 limit=self.args.limit,
+                                delay=self.args.delay,
                                 key=self.args.api_key)
         return cves
 
     def _search_by_cpe(self):
         Output.info(f'Searching by CPE...')
         cpes = nvdlib.searchCPE(cpeMatchString=self.args.search,
+                                delay=self.args.delay,
                                 key=self.args.api_key)
 
         if len(cpes) == 0:
@@ -486,6 +496,7 @@ class CveCheck():
                                 cweId=self.args.cwe_id,
                                 keywordExactMatch=self.args.exact_match,
                                 limit=self.args.limit,
+                                delay=self.args.delay,
                                 key=self.args.api_key)
         return cves
 
