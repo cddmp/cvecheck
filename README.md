@@ -54,7 +54,7 @@ As with the normal CPE, stars can be used as wild cards. Below is an example whe
 
 Apart from that, the same applies as with the CPE search described above.
 
-```./cvecheck.py 'scpe:*:openssl:1.0.2f```
+```./cvecheck.py 'scpe:*:openssl:1.0.2f''```
 
 ### Keyword based search
 If the keyword does not start with 'CVE-', 'cpe:' or 'scpe:', the keyword based search will be used.

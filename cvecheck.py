@@ -298,7 +298,7 @@ def abort(msg):
 
 def parse_arguments():
     parser = ArgumentParser(description="""A simple tool to query the National Vulnerability Database (NVD) with colors support.""")
-    parser.add_argument('search', help=f'search by keyword (e.g.,"{Colors.bold("OpenSSL 1.0.2f")}"), CVE (e.g.,"{Colors.bold("CVE-2014-0160")}") or CPE (e.g.,"{Colors.bold("cpe:2.3:a:openssl:openssl:1.0.2f:*:*:*:*:*:*:*")}")')
+    parser.add_argument('search', help=f'search by keyword (e.g.,"{Colors.bold("OpenSSL 1.0.2f")}"), CVE (e.g.,"{Colors.bold("CVE-2014-0160")}"), CPE (e.g.,"{Colors.bold("cpe:2.3:a:openssl:openssl:1.0.2f:*:*:*:*:*:*:*")}") or simplified CPE (e.g., "{Colors.bold("scpe:*:openssl:1.0.2f")}")')
 
     mode_switch = parser.add_mutually_exclusive_group()
     mode_switch.add_argument('--cve', action="store_true", help=f'enforce CVE search')
