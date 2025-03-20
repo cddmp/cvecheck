@@ -25,8 +25,8 @@ class Colors(Enum):
     blue = '\033[94m'
     very_red = '\033[101m'
 
-    def __call__(self, string, no_colors=False):
-        if no_colors:
+    def __call__(self, string):
+        if Output.NO_COLOR:
             return string
         return f'{self.value}{string}\033[0m'
 
@@ -38,56 +38,56 @@ class Output():
     def banner(self):
         if self.QUIET:
             return
-        print(Colors.bold(Colors.green('-= CVECHECK =-', self.NO_COLOR), self.NO_COLOR), end='\n\n')
+        print(Colors.bold(Colors.green('-= CVECHECK =-')), end='\n\n')
 
     @classmethod
     def info(self, msg):
         if self.QUIET:
             return
 
-        print(Colors.bold(f'[*] {msg}', self.NO_COLOR))
+        print(Colors.bold(f'[*] {msg}'))
 
     @classmethod
     def cves_total(self, total_all):
         if self.QUIET:
             return
 
-        print(Colors.bold('[*] Found ', self.NO_COLOR) + Colors.red(str(total_all), self.NO_COLOR) + Colors.bold(' CVE(s)', self.NO_COLOR))
+        print(Colors.bold('[*] Found ') + Colors.red(str(total_all)) + Colors.bold(' CVE(s)'))
 
     @classmethod
     def cves_in_analysis_state(self, total_unrated, total_all):
         if self.QUIET:
             return
 
-        print(Colors.bold('[*] ', self.NO_COLOR) + Colors.red(str(total_unrated), self.NO_COLOR) + '/' + Colors.red(str(total_all), self.NO_COLOR) + Colors.bold(' CVE(s) in analysis state (no CVSS assigned yet)', self.NO_COLOR))
+        print(Colors.bold('[*] ') + Colors.red(str(total_unrated)) + '/' + Colors.red(str(total_all)) + Colors.bold(' CVE(s) in analysis state (no CVSS assigned yet)'))
 
     @classmethod
     def cves_with_both_scores(self, total_v3, total_all):
         if self.QUIET:
             return
 
-        print(Colors.bold('[*] ', self.NO_COLOR) + Colors.red(str(total_v3), self.NO_COLOR) + '/' + Colors.red(str(total_all), self.NO_COLOR) + Colors.bold(' CVE(s) with CVSS v3 and CVSS v2 score', self.NO_COLOR))
+        print(Colors.bold('[*] ') + Colors.red(str(total_v3)) + '/' + Colors.red(str(total_all)) + Colors.bold(' CVE(s) with CVSS v3 and CVSS v2 score'))
 
     @classmethod
     def hint(self, msg):
         if self.QUIET:
             return
 
-        print(Colors.yellow(f'[*] {msg}', self.NO_COLOR))
+        print(Colors.yellow(f'[*] {msg}'))
 
     @classmethod
     def error(self, msg):
         if self.QUIET:
             return
 
-        print(Colors.red(f'[!] {msg}', self.NO_COLOR))
+        print(Colors.red(f'[!] {msg}'))
 
     @classmethod
     def cves_with_v2_score_only(self, total_v2, total_all):
         if self.QUIET:
             return
 
-        print(Colors.bold('[*] ', self.NO_COLOR) + Colors.red(str(total_v2), self.NO_COLOR) + '/' + Colors.red(str(total_all), self.NO_COLOR) + Colors.bold(' CVE(s) with CVSS v2 score only', self.NO_COLOR))
+        print(Colors.bold('[*] ') + Colors.red(str(total_v2)) + '/' + Colors.red(str(total_all)) + Colors.bold(' CVE(s) with CVSS v2 score only'))
 
 class ColoredEntry():
     def __init__(self, entry, template):
