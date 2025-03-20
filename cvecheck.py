@@ -306,7 +306,7 @@ def parse_arguments():
     mode_switch.add_argument('--scpe', action="store_true", help=f'enforce "simplified" CPE search')
     mode_switch.add_argument('--keyword', action="store_true", help=f'enforce keyword search')
 
-    parser.add_argument('--exact-match', dest='exact_match', action='store_true', help=f'return only results which literally match the keyword')
+    parser.add_argument('--exact-match', dest='exact_match', action='store_true', default=None, help=f'return only results which literally match the keyword')
     parser.add_argument('--limit', dest='limit', type=int, help=f'limit the number of results at API level')
     parser.add_argument('--quiet', dest='quiet', action="store_true", default=False, help=f'only print result - will be automatically disabled if input is required')
     parser.add_argument('--template', dest='template', default='examples/default.jinja2', help=f'path to jinja2 template for CVE output')
@@ -326,7 +326,7 @@ def parse_arguments():
 
 
     api_settings = parser.add_argument_group('API settings')
-    api_settings.add_argument('--api-key', dest='api_key', default='', help=f'API key for National Vulnerabilities Database (NVD) for faster queries (optional)')
+    api_settings.add_argument('--api-key', dest='api_key', default=None, help=f'API key for National Vulnerabilities Database (NVD) for faster queries (optional)')
     api_settings.add_argument('--delay', dest='delay', default=None, type=float, help=f'Request delay, by default 6 seconds as requested by NIST, can be lowered to 0.6 seconds when an API key is used')
     args = parser.parse_args()
 
@@ -398,8 +398,8 @@ class CveCheck():
         self.entries_v2 = []
         self.entries_v3 = []
         self.entries_unrated = []
-        self.cvssV2Severity = False
-        self.cvssV3Severity = False
+        self.cvssV2Severity = None
+        self.cvssV3Severity = None
 
     def run(self):
         if self.args.severity_filter and self.args.severity_filter.single_filter:

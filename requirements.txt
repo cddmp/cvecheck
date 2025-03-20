@@ -1,2 +1,2 @@
-nvdlib==0.7.7
+nvdlib
 Jinja2
